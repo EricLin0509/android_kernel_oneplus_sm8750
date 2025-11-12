@@ -169,3 +169,6 @@ sphinx_*/
 
 # Rust analyzer configuration
 /rust-project.json
+
+#The backup file created by Baseband Guard
+security/selinux/Makefile.bak
