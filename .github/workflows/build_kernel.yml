@@ -19,31 +19,31 @@ jobs:
                     mkdir kernel_workspace
                     cd kernel_workspace
           
-                    sudo apt-mark hold firefox &&
-                    sudo apt-mark hold libc-bin &&
-                    sudo apt purge man-db &&
-                    sudo rm -rf /var/lib/man-db/auto-update &&
-                    sudo apt-get update &&
-                    sudo apt-get install -y --no-install-recommends binutils python-is-python3 libssl-dev libelf-dev ccache &
+                    sudo apt-mark hold firefox
+                    sudo apt-mark hold libc-bin
+                    sudo apt purge man-db
+                    sudo rm -rf /var/lib/man-db/auto-update
+                    sudo apt-get update
+                    sudo apt-get install -y --no-install-recommends binutils python-is-python3 libssl-dev libelf-dev ccache
 
                     echo "Downloading kernel source..."
-                    git clone https://github.com/EricLin0509/android_kernel_oneplus_sm8750/ -b 6.6.89 --depth=1 common &&
+                    git clone https://github.com/EricLin0509/android_kernel_oneplus_sm8750/ -b 6.6.89 --depth=1 common
                     # Initialize submodules
-                    cd common &&
+                    cd common
                     echo "Initializing submodules..."
-                    git submodule init &&
-                    git submodule update --depth=1 --recommend-shallow &&
-                    cd .. &
+                    git submodule init
+                    git submodule update --depth=1 --recommend-shallow
+                    cd ..
 
                     echo "Downloading build tools..."
-                    mkdir -p clang18 &&
-                    aria2c -s16 -x16 -k1M https://github.com/cctv18/oneplus_sm8650_toolchain/releases/download/LLVM-Clang18-r510928/clang-r510928.zip -o clang.zip &&
-                    unzip -q clang.zip -d clang18 &&
-                    rm -rf clang.zip &
+                    mkdir -p clang18
+                    aria2c -s16 -x16 -k1M https://github.com/cctv18/oneplus_sm8650_toolchain/releases/download/LLVM-Clang18-r510928/clang-r510928.zip -o clang.zip
+                    unzip -q clang.zip -d clang18
+                    rm -rf clang.zip
 
-                    aria2c -s16 -x16 -k1M https://github.com/cctv18/oneplus_sm8650_toolchain/releases/download/LLVM-Clang18-r510928/build-tools.zip -o build-tools.zip &&
-                    unzip -q build-tools.zip &&
-                    rm -rf build-tools.zip &
+                    aria2c -s16 -x16 -k1M https://github.com/cctv18/oneplus_sm8650_toolchain/releases/download/LLVM-Clang18-r510928/build-tools.zip -o build-tools.zip
+                    unzip -q build-tools.zip
+                    rm -rf build-tools.zip
                     
                     wait
                     echo "Source code and build tools downloaded."
