@@ -45,7 +45,6 @@ jobs:
                     unzip -q build-tools.zip
                     rm -rf build-tools.zip
                     
-                    wait
                     echo "Source code and build tools downloaded."
                     echo "Removing ABI protected exports and -dirty suffix"
                     rm common/android/abi_gki_protected_exports_* || true
