@@ -135,6 +135,8 @@ jobs:
 
             - name: Set Variables
               run: |
+                    FULL_VERSION=${{ format('{0}.89-{1}', env.KERNEL_VERSION, env.KERNEL_NAME) }}
+                    echo "FULL_VERSION=$FULL_VERSION" >> $GITHUB_ENV
                     TIME="$(TZ='Asia/Shanghai' date +'%y%m%d%H%M%S')"
                     TIME_FORM="$(TZ='Asia/Shanghai' date +'%Y-%m-%d %H:%M:%S')"
                     echo "TIME=$TIME" >> $GITHUB_ENV
@@ -144,9 +146,12 @@ jobs:
               id: create_release
               uses: softprops/action-gh-release@v1
               with:
-                tag_name: "${{ env.KERNEL_VERSION }}-${{ env.TIME }}"
-                name: "OPlus-${{ env.KERNEL_VERSION }}-${{ env.KERNEL_NAME }} (${{ env.TIME_FORM }})"
-                body: "Release ${{ env.KERNEL_VERSION }}-${{ env.KERNEL_NAME }} built on ${{ env.TIME_FORM }}"
+                tag_name: "${{ env.KERNEL_NAME }}-${{ env.TIME_FORM }}"
+                name: "OPlus-${{env.FULL_VERSION}} (${{ env.TIME_FORM }})"
+                body: |
+                    ### "Release ${{ env.FULL_VERSION }} built on ${{ env.TIME_FORM }}"
+                    - Kernel version: ${{ env.FULL_VERSION }}
+                    - Build time: ${{ env.TIME_FORM }}
 
                 draft: false
                 prerelease: false
