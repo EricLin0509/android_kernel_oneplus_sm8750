@@ -65,6 +65,13 @@ jobs:
                     sed -i 's/${scm_version}//' ./common/scripts/setlocalversion
                     echo "CONFIG_LOCALVERSION_AUTO=n" >> ./common/arch/arm64/configs/gki_defconfig
 
+                    echo "Enable -O2 optimization"
+                    echo "CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y" >> ./common/arch/arm64/configs/gki_defconfig
+                    echo "Disable deconfig check"
+                    sed -i 's/check_defconfig//' ./common/build.config.gki
+                    echo "Disable headers installation"
+                    echo "CONFIG_HEADERS_INSTALL=n" >> ./common/arch/arm64/configs/gki_defconfig
+
             - name: Build Kernel
               run: |
                     WORKDIR="$(pwd)"
