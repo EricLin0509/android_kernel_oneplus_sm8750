@@ -146,7 +146,7 @@ jobs:
               id: create_release
               uses: softprops/action-gh-release@v1
               with:
-                tag_name: "${{ env.KERNEL_NAME }}-${{ env.TIME_FORM }}"
+                tag_name: "${{ env.KERNEL_NAME }}-${{ env.TIME }}"
                 name: "OPlus-${{env.FULL_VERSION}} (${{ env.TIME_FORM }})"
                 body: |
                     ### "Release ${{ env.FULL_VERSION }} built on ${{ env.TIME_FORM }}"
