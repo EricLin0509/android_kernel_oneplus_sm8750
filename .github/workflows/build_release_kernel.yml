@@ -72,6 +72,13 @@ jobs:
                     echo "Disable headers installation"
                     echo "CONFIG_HEADERS_INSTALL=n" >> ./common/arch/arm64/configs/gki_defconfig
 
+                    echo "Enable ADIOS-IO scheduler"
+                    echo "CONFIG_MQ_IOSCHED_ADIOS=y" >> ./common/arch/arm64/configs/gki_defconfig
+                    echo "CONFIG_MQ_IOSCHED_DEFAULT_ADIOS=y" >> ./common/arch/arm64/configs/gki_defconfig
+
+                    echo "Enable Re-Kernel"
+                    echo "CONFIG_REKERNEL=y" >> ./common/arch/arm64/configs/gki_defconfig
+
             - name: Build Kernel
               run: |
                     WORKDIR="$(pwd)"
