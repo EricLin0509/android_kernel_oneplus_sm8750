@@ -27,7 +27,7 @@ jobs:
                     sudo apt-get install -y --no-install-recommends binutils python-is-python3 libssl-dev libelf-dev ccache
 
                     echo "Downloading kernel source..."
-                    git clone https://github.com/EricLin0509/android_kernel_oneplus_sm8750/ -b 6.6-lts --depth=1 common
+                    git clone https://github.com/EricLin0509/android_kernel_oneplus_sm8750/ -b main --depth=1 common
                     # Initialize submodules
                     cd common
                     echo "Initializing submodules..."
