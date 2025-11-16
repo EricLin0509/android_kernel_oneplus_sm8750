@@ -1,0 +1,166 @@
+name: Build Release Kernel
+
+env:
+    TZ: Asia/Shanghai
+    ANDROID_VERSION: 'android15'
+    KERNEL_VERSION: '6.6'
+    KERNEL_NAME: 'android15-8-gb10d63bc1566-abogki14419598-4k'
+
+on:
+    workflow_dispatch:
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Download Kernel source and build tools
+              run: |
+                    rm -rf kernel_workspace
+                    mkdir kernel_workspace
+                    cd kernel_workspace
+          
+                    sudo apt-mark hold firefox
+                    sudo apt-mark hold libc-bin
+                    sudo apt purge man-db
+                    sudo rm -rf /var/lib/man-db/auto-update
+                    sudo apt-get update
+                    sudo apt-get install -y --no-install-recommends binutils python-is-python3 libssl-dev libelf-dev ccache
+
+                    echo "Downloading kernel source..."
+                    git clone https://github.com/EricLin0509/android_kernel_oneplus_sm8750/ -b main --depth=1 common
+                    # Initialize submodules
+                    cd common
+                    echo "Initializing submodules..."
+                    git submodule init
+                    git submodule update --depth=1 --recommend-shallow
+                    cd ..
+
+                    echo "Downloading build tools..."
+                    mkdir -p clang18
+                    aria2c -s16 -x16 -k1M https://github.com/cctv18/oneplus_sm8650_toolchain/releases/download/LLVM-Clang18-r510928/clang-r510928.zip -o clang.zip
+                    unzip -q clang.zip -d clang18
+                    rm -rf clang.zip
+
+                    aria2c -s16 -x16 -k1M https://github.com/cctv18/oneplus_sm8650_toolchain/releases/download/LLVM-Clang18-r510928/build-tools.zip -o build-tools.zip
+                    unzip -q build-tools.zip
+                    rm -rf build-tools.zip
+                    
+                    echo "Source code and build tools downloaded."
+                    echo "Removing ABI protected exports and -dirty suffix"
+                    rm common/android/abi_gki_protected_exports_* || true
+                    for f in common/scripts/setlocalversion; do
+                        sed -i 's/ -dirty//g' "$f"
+                        sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' "$f"
+                    done
+
+            - name: Replace Kernel version suffix
+              run: |
+                    cd kernel_workspace
+                    echo "Replacing kernel version suffix..."
+                    echo "Current kernel version: ${{ env.KERNEL_NAME }}"
+                    for f in ./common/scripts/setlocalversion; do
+                        sed -i "\$s|echo \"\\\$res\"|echo \"-${{ env.KERNEL_NAME }}\"|" "$f"
+                    done
+                    sudo sed -i 's/-4k/-${{ env.KERNEL_NAME }}/g' ./common/arch/arm64/configs/gki_defconfig
+                    sed -i 's/${scm_version}//' ./common/scripts/setlocalversion
+                    echo "CONFIG_LOCALVERSION_AUTO=n" >> ./common/arch/arm64/configs/gki_defconfig
+
+                    echo "Enable -O2 optimization"
+                    echo "CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y" >> ./common/arch/arm64/configs/gki_defconfig
+                    echo "Disable deconfig check"
+                    sed -i 's/check_defconfig//' ./common/build.config.gki
+                    echo "Disable headers installation"
+                    echo "CONFIG_HEADERS_INSTALL=n" >> ./common/arch/arm64/configs/gki_defconfig
+
+                    echo "Enable ADIOS-IO scheduler"
+                    echo "CONFIG_MQ_IOSCHED_ADIOS=y" >> ./common/arch/arm64/configs/gki_defconfig
+                    echo "CONFIG_MQ_IOSCHED_DEFAULT_ADIOS=y" >> ./common/arch/arm64/configs/gki_defconfig
+
+                    echo "Enable Re-Kernel"
+                    echo "CONFIG_REKERNEL=y" >> ./common/arch/arm64/configs/gki_defconfig
+
+            - name: Build Kernel
+              run: |
+                    WORKDIR="$(pwd)"
+                    export PATH="/usr/lib/ccache:$PATH"
+                    export PATH="$WORKDIR/kernel_workspace/clang18/bin:$PATH"
+                    export PATH="$WORKDIR/kernel_workspace/build-tools/bin:$PATH"
+                    CLANG_DIR="$WORKDIR/kernel_workspace/clang18/bin"
+                    CLANG_VERSION="$($CLANG_DIR/clang --version | head -n 1)"
+                    LLD_VERSION="$($CLANG_DIR/ld.lld --version | head -n 1)"
+                    echo "Compiler infos:"
+                    echo "Clang version: $CLANG_VERSION"
+                    echo "LLD version: $LLD_VERSION"
+                    pahole_version=$(pahole --version 2>/dev/null | head -n1); [ -z "$pahole_version" ] && echo "pahole version: not installed" || echo "pahole version: $pahole_version"
+
+                    cd kernel_workspace/common
+                    echo "Building kernel..."
+                    make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC="ccache clang" LD="ld.lld" HOSTLD=ld.lld O=out KCFLAGS+=-O2 KCFLAGS+=-Wno-error gki_defconfig &&
+                    make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC="ccache clang" LD="ld.lld" HOSTLD=ld.lld O=out KCFLAGS+=-O2 KCFLAGS+=-Wno-error Image
+
+            - name: Pack Kernel image with AnyKernel3
+              run: |
+                    cd kernel_workspace
+                    git clone https://github.com/EricLin0509/AnyKernel3.git --depth=1
+                    rm -rf ./AnyKernel3/.git
+                    cd AnyKernel3
+                    echo "Adding kernel image..."
+                    cp ../common/out/arch/arm64/boot/Image ./Image
+                    if [[ ! -f ./Image ]]; then
+                        echo "Kernel image not found!"
+                        exit 1
+                    fi
+                    echo "Kernel image added."
+                    echo "Zipping AnyKernel3..."
+                    zip -r ../AnyKernel3_${{ env.KERNEL_VERSION }}_A15_${{ env.KERNEL_NAME }}.zip ./*
+                    if [ ! -f ../*.zip ]; then
+                        echo "[ERROR] Zipped failed!"
+                        exit 1
+                    fi
+                    echo "AnyKernel3 zipped."
+            
+            - name: Upload Kernel Zip Artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: Kernel_ZIP_Artifacts
+                  path: ${{ github.workspace }}/kernel_workspace/AnyKernel*.zip
+
+    release:
+        needs: build
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            packages: write
+            actions: read
+
+        steps:
+            - name: Download Kernel Zip Artifacts
+              uses: actions/download-artifact@v4
+              with:
+                  name: Kernel_ZIP_Artifacts
+                  path: ./release_zips
+
+            - name: Set Variables
+              run: |
+                    FULL_VERSION=${{ format('{0}.114-{1}', env.KERNEL_VERSION, env.KERNEL_NAME) }}
+                    echo "FULL_VERSION=$FULL_VERSION" >> $GITHUB_ENV
+                    TIME="$(TZ='Asia/Shanghai' date +'%y%m%d%H%M%S')"
+                    TIME_FORM="$(TZ='Asia/Shanghai' date +'%Y-%m-%d %H:%M:%S')"
+                    echo "TIME=$TIME" >> $GITHUB_ENV
+                    echo "TIME_FORM=$TIME_FORM" >> $GITHUB_ENV
+
+            - name: Create Release
+              id: create_release
+              uses: softprops/action-gh-release@v1
+              with:
+                tag_name: "${{ env.KERNEL_NAME }}-${{ env.TIME }}"
+                name: "OPlus-${{env.FULL_VERSION}} (${{ env.TIME_FORM }})"
+                body: |
+                    ### "Release ${{ env.FULL_VERSION }} built on ${{ env.TIME_FORM }}"
+                    - Kernel version: ${{ env.FULL_VERSION }}
+                    - Build time: ${{ env.TIME_FORM }}
+
+                draft: false
+                prerelease: false
+                files: |
+                    release_zips/AnyKernel*.zip
